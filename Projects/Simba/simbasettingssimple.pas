@@ -161,6 +161,7 @@ begin
   SimbaSettings.Tab.OpenNextOnClose.Value := TabSettingsCheckBoxes.Checked[0];
   SimbaSettings.Tab.OpenScriptInNewTab.Value := TabSettingsCheckBoxes.Checked[1];
   SimbaSettings.Tab.CheckBeforeOpen.Value := TabSettingsCheckBoxes.Checked[2];
+  SimbaSettings.Tab.CurrentScriptDebug.Value := TabSettingsCheckBoxes.Checked[3];
 
   // Code Tools
   SimbaSettings.CodeHints.ShowAutomatically.Value := CodeToolsCheckBoxes.Checked[0];
@@ -240,6 +241,7 @@ begin
   TabSettingsCheckBoxes.Checked[0] := SimbaSettings.Tab.OpenNextOnClose.Value;
   TabSettingsCheckBoxes.Checked[1] := SimbaSettings.Tab.OpenScriptInNewTab.Value;
   TabSettingsCheckBoxes.Checked[2] := SimbaSettings.Tab.CheckBeforeOpen.Value;
+  TabSettingsCheckBoxes.Checked[3] := SimbaSettings.Tab.CurrentScriptDebug.Value;
 
   // Code Tools
   CodeToolsCheckBoxes.Checked[0] := SimbaSettings.CodeHints.ShowAutomatically.Value;

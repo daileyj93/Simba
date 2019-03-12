@@ -34,6 +34,7 @@ ssPluginsPath = ssSettings + ssPlugins + 'Path';
 ssTabsOpenNextOnClose = ssSettings + ssTabs + 'OpenNextOnClose';
 ssTabsOpenScriptInNewTab = ssSettings + ssTabs + 'OpenScriptInNewTab';
 ssTabsCheckBeforeOpen = ssSettings + ssTabs + 'CheckTabsBeforeOpen';
+ssTabsCurrentScriptDebug = ssSettings + ssTabs + 'CurrentScriptDebug';
 
 ssColourPickerShowHistoryOnPick = ssSettings + ssColourPicker + 'ShowHistoryOnPick';
 ssColourPickerAddToHistoryOnPick = ssSettings + ssColourPicker + 'AddToHistoryOnPick';

@@ -1313,10 +1313,22 @@ begin
   NewTab := PageControl1.TabIndex;
   if NewTab < 0 then
     Exit;
+  if(SimbaSettings.Tab.CurrentScriptDebug.Value ) then
+  begin
+    CurrScript.DebugBuffer.Assign(DebugMemo.Lines);
+    if (CurrScript.ScriptThread <> nil) then
+      CurrScript.ScriptThread.Output := CurrScript.DebugBuffer;
+  end;
   Tab := TMufasaTab(Tabs[Newtab]);
   Script := Tab.ScriptFrame;
   Self.CurrScript := Script;
   Self.CurrTab := Tab;
+  if(SimbaSettings.Tab.CurrentScriptDebug.Value) then
+  begin
+    DebugMemo.Lines.Assign(CurrScript.DebugBuffer);
+    if (CurrScript.ScriptThread <> nil) then
+      CurrScript.ScriptThread.Output := DebugMemo.Lines;
+  end;
   SetScriptState(Tab.ScriptFrame.FScriptState);//To set the buttons right
   // Only focus editor if Simba is focused and tab is currently showing.
   if Self.Focused and (Tab.TabSheet.TabIndex = Self.PageControl1.TabIndex) and CurrScript.SynEdit.CanFocus() then
@@ -1468,7 +1480,7 @@ begin
 
   try
     Thread := TMMLScriptThread.Create(Script, CurrScript.ScriptFile);
-    Thread.Output := DebugMemo.Lines;
+    Thread.Output := CurrScript.DebugBuffer;
     Thread.Error.Data := @CurrScript.ErrorData;
     Thread.Error.Callback := @CurrScript.HandleErrorData;
 

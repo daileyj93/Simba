@@ -6,7 +6,7 @@ object SimbaForm: TSimbaForm
   ActiveControl = ScriptPanel
   AllowDropFiles = True
   Caption = 'Simba'
-  ClientHeight = 773
+  ClientHeight = 753
   ClientWidth = 1250
   KeyPreview = True
   Menu = MainMenu
@@ -17,7 +17,7 @@ object SimbaForm: TSimbaForm
   OnHide = doOnHide
   OnShortCut = FormShortCuts
   Position = poScreenCenter
-  LCLVersion = '1.8.1.0'
+  LCLVersion = '1.8.4.0'
   Visible = True
   object ToolBar: TToolBar
     Left = 0

@@ -194,6 +194,7 @@ type
       OpenNextOnClose: TBooleanSetting;
       OpenScriptInNewTab: TBooleanSetting;
       CheckBeforeOpen: TBooleanSetting;
+      CurrentScriptDebug: TBooleanSetting;
     end;
 
     TGeneralSection = class(TSection)
@@ -810,6 +811,7 @@ procedure GetUpdaterVersionLink(obj: TSetting); begin TStringSetting(obj).Value 
 procedure GetTabOpenNextOnClose(obj: TSetting); begin TBooleanSetting(obj).Value := False; end;
 procedure GetOpenScriptInNewTab(obj: TSetting); begin TBooleanSetting(obj).Value := True; end;
 procedure GetTabCheckBeforeOpen(obj: TSetting); begin TBooleanSetting(obj).Value := True; end;
+procedure GetCurrentScriptDebug(obj: TSetting); begin TBooleanSetting(obj).Value := False; end;
 
 procedure GetGeneralMaxRecentFiles(obj: TSetting); begin TIntegerSetting(obj).Value := 10; end;
 
@@ -919,6 +921,8 @@ begin
   Tab.OpenScriptInNewTab.onDefault := @GetOpenScriptInNewTab;
   Tab.CheckBeforeOpen := Tab.AddChild(TBooleanSetting.Create(ssTabsCheckBeforeOpen)) as TBooleanSetting;
   Tab.CheckBeforeOpen.onDefault := @GetTabCheckBeforeOpen;
+  Tab.CurrentScriptDebug := Tab.AddChild(TBooleanSetting.Create(ssTabsCurrentScriptDebug)) as TBooleanSetting;
+  Tab.CurrentScriptDebug.onDefault := @GetCurrentScriptDebug;
 
   General := AddChild(TGeneralSection.Create()) as TGeneralSection;
   General.MaxRecentFiles := General.AddChild(TIntegerSetting.Create(ssMaxRecentFiles)) as TIntegerSetting;
