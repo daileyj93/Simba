@@ -54,6 +54,7 @@ type
     function EndOfFile(FileNum: Integer): Boolean;
     function FileSizeMuf(FileNum: Integer): LongInt;
     function ReadFileString(FileNum: Integer; out s: string; x: Integer): Boolean;
+    function ReadFileLine(FileNum: Integer; out s: string): Boolean;
     function WriteFileString(FileNum: Integer;const s: string): Boolean;
     function SetFileCharPointer(FileNum, cChars, Origin: Integer): Integer;
     function FilePointerPos(FileNum: Integer): Integer;
@@ -607,6 +608,33 @@ begin
   {Files[FileNum].BytesRead := Files[FileNum].BytesRead + X;
   FileRead(Files[FileNum].Handle, S[1], X);
   SetLength(S, X); }
+end;
+
+{/\
+  Reads a line of characters from a file, and stores it into s.
+/\}
+function TMFiles.ReadFileLine(FileNum: Integer; out s: string): Boolean;
+var
+  count: Integer;
+  char: AnsiChar;
+begin
+  CheckFileNum(FileNum);
+  if MFiles[FileNum].FS = nil then
+  begin
+    TClient(Client).Writeln(format('ReadFileLine: Invalid Internal Handle of File: %d',[filenum]));
+    Exit;
+  end;
+  count := 0;
+  char := #0;
+  while((MFiles[FileNum].FS.Read(char, 1) = 1) and (char <> #13)) do
+  begin
+    count += 1;
+  end;
+
+  SetLength(s, count);
+  MFiles[FileNum].FS.Seek(-1 * count, fsFromCurrent);
+  MFiles[FileNum].FS.Read(s[1], count);
+  Result:=True;
 end;
 
 {/\

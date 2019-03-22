@@ -125,6 +125,12 @@ begin
   PBoolean(Result)^ := PMFiles(Params^[0])^.ReadFileString(PInteger(Params^[1])^, PlpString(Params^[2])^, PInteger(Params^[3])^);
 end;
 
+//function ReadFileLine(FileNum: Integer; out s: string): Boolean;
+procedure TMFiles_ReadFileLine(const Params: PParamArray; const Result: Pointer); {$IFDEF Lape_CDECL}cdecl;{$ENDIF}
+begin
+  PBoolean(Result)^ := PMFiles(Params^[0])^.ReadFileLine(PInteger(Params^[1])^, PlpString(Params^[2])^);
+end;
+
 //function WriteFileString(FileNum: Integer;const s: string): Boolean;
 procedure TMFiles_WriteFileString(const Params: PParamArray; const Result: Pointer); {$IFDEF Lape_CDECL}cdecl;{$ENDIF}
 begin

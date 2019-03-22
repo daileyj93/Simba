@@ -60,6 +60,12 @@ begin
     PBoolean(Result)^ := MFiles.ReadFileString(PInt32(Params^[1])^, PString(Params^[2])^, PInt32(Params^[3])^);
 end;
 
+procedure Lape_ReadFileLine(const Params: PParamArray; const Result: Pointer); {$IFDEF Lape_CDECL}cdecl;{$ENDIF}
+begin
+  with TMMLScriptThread(Params^[0]).Client do
+    PBoolean(Result)^ := MFiles.ReadFileLine(PInt32(Params^[1])^, PString(Params^[2])^);
+end;
+
 procedure Lape_WriteFileString(const Params: PParamArray; const Result: Pointer); {$IFDEF Lape_CDECL}cdecl;{$ENDIF}
 begin
   with TMMLScriptThread(Params^[0]).Client do
@@ -189,6 +195,7 @@ begin
     addGlobalMethod('function EndOfFile(FileNum: Int32): Boolean', @Lape_EndOfFile, Data);
     addGlobalMethod('function FileSize(FileNum: Int32): LongInt', @Lape_FileSize, Data);
     addGlobalMethod('function ReadFileString(FileNum: Int32; var s: String; x: Int32): Boolean', @Lape_ReadFileString, Data);
+    addGlobalMethod('function ReadFileLine(FileNum: Int32; var s: String): Boolean', @Lape_ReadFileLine, Data);
     addGlobalMethod('function WriteFileString(FileNum: Int32; s: String): Boolean', @Lape_WriteFileString, Data);
     addGlobalMethod('function SetFileCharPointer(FileNum, cChars, Origin: Int32): Int32', @Lape_SetFileCharPointer, Data);
     addGlobalMethod('function FilePointerPos(FileNum: Int32): Int32', @Lape_FilePointerPos, Data);
