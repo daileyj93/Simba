@@ -32,6 +32,7 @@ uses
 const
   File_AccesError = -1;
   File_EventError = -2;
+  NewLineChar = {$IFDEF LINUX}#10{$ELSE}#13{$ENDIF};
 
 type
 
@@ -626,14 +627,12 @@ begin
   end;
   count := 0;
   char := #0;
-  while((MFiles[FileNum].FS.Read(char, 1) = 1) and (char <> #13)) do
+  while((MFiles[FileNum].FS.Read(char, 1) = 1) and (char <> NewLineChar)) do
   begin
     count += 1;
+    if(char <> #10) and (char <> #13) then //do not include LineFeed of CarriageReturn
+      s += char;
   end;
-
-  SetLength(s, count);
-  MFiles[FileNum].FS.Seek(-1 * count, fsFromCurrent);
-  MFiles[FileNum].FS.Read(s[1], count);
   Result:=True;
 end;
 
