@@ -616,7 +616,6 @@ end;
 /\}
 function TMFiles.ReadFileLine(FileNum: Integer; out s: string): Boolean;
 var
-  count: Integer;
   char: AnsiChar;
 begin
   CheckFileNum(FileNum);
@@ -625,15 +624,13 @@ begin
     TClient(Client).Writeln(format('ReadFileLine: Invalid Internal Handle of File: %d',[filenum]));
     Exit;
   end;
-  count := 0;
   char := #0;
   while((MFiles[FileNum].FS.Read(char, 1) = 1) and (char <> NewLineChar)) do
   begin
-    count += 1;
     if(char <> #10) and (char <> #13) then //do not include LineFeed of CarriageReturn
       s += char;
   end;
-  Result:=True;
+  Result := (char = NewLineChar);
 end;
 
 {/\
