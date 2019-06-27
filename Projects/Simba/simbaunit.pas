@@ -51,6 +51,8 @@ uses
   Simbasettingssimple,
   v_ideCodeInsight, v_ideCodeParser, CastaliaPasLexTypes, // Code completion units
   CastaliaSimplePasPar, v_AutoCompleteForm,  // Code completion units
+  
+  virtualextension, extensionmanager,
 
   updater, simba.package_form,
   {$IFDEF USE_SCRIPTMANAGER}SM_Main,{$ENDIF}
@@ -166,6 +168,7 @@ type
     MenuItemDivider11: TMenuItem;
     MenuItemSaveDef: TMenuItem;
     MenuItemBitmapConv: TMenuItem;
+	MenuItemExtensions: TMenuItem;
     MenuItemSettingsButton: TMenuItem;
     MenuItemDivider10: TMenuItem;
     MenuTools: TMenuItem;
@@ -287,6 +290,8 @@ type
     procedure ActionCodeCommentExecute(Sender: TObject);
     procedure ActionColorsExecute(Sender: TObject);
     procedure ActionClearDebugExecute(Sender: TObject);
+	procedure ActionExtensionsExecute(Sender: TObject);
+	procedure ActionExtensionsUpdate(Sender: TObject);
     procedure ActionCloseTabExecute(Sender: TObject);
     procedure ActionCompileScriptExecute(Sender: TObject);
     procedure ActionConsoleExecute(Sender: TObject);
@@ -445,6 +450,8 @@ type
     procedure FillFunctionList(Sender: TObject);
     procedure CustomExceptionHandler(Sender: TObject; E: Exception);
     procedure RegisterSettingsOnChanges;
+	
+	procedure SetExtensionsPath(obj: TSetting);
   public
     { Required to work around using freed resources on quit }
     Exiting: Boolean;
@@ -505,6 +512,7 @@ type
     function DefaultScript : string;
     procedure DefaultHighlighter;
     procedure UpdateSimbaSilent(Force: Boolean);
+	procedure LoadExtensions;
   end;
 
   procedure formWriteln(constref S: String);
@@ -542,6 +550,8 @@ uses
    simba.environment, simba.httpclient,
    aca, dtm_editor, scriptcommenter, colorscheme
    {$IFDEF USE_FORMDESIGNER}, frmdesigner{$ENDIF}
+   
+   extensionmanagergui,
 
    {$IFDEF LINUX_HOTKEYS}, keybinder{$ENDIF};
 
@@ -739,7 +749,7 @@ end;
 
 function TSimbaForm.OnCCFindInclude(Sender: TObject; var FileName: string): Boolean;
 begin
-  Result := FindFile(Filename, [Application.Location, SimbaEnvironment.IncludePath]);
+  Result := FindFile(Filename, [Application.Location, SimbaEnvironment.IncludePath, SimbaSettings.Extensions.Path.Value]);
 end;
 
 function TSimbaForm.OnCCLoadLibrary(Sender: TObject; var Argument: string; out Parser: TCodeInsight): Boolean;
@@ -782,6 +792,25 @@ begin
   Exit(False);
 end;
 
+procedure TSimbaForm.HandleConnectionData;
+var
+  Args : TVariantArray;
+  Called: Boolean;
+begin
+  SetLength(Args,2);
+  Args[0] := OpenConnectionData.URL^;
+  Args[1] := OpenConnectionData.Continue^;
+  try
+    ExtManager.HandleHook(EventHooks[SExt_onOpenConnection].HookName, Args,
+        Called);
+    OpenConnectionData.URL^ := Args[0];
+    OpenConnectionData.Continue^ := Args[1];
+  except
+    on e : Exception do
+      mDebugLn('ERROR in HandleConnectiondata: ' + e.message);
+  end;
+end;
+
 procedure TSimbaForm.SetSourceEditorFont(obj: TSetting);
 var
   I: LongInt;
@@ -793,9 +822,92 @@ begin
     TMufasaTab(Tabs[I]).ScriptFrame.SynEdit.Font.Assign(TFontSetting(obj).Value);
 end;
 
+procedure TSimbaForm.SetExtensionsPath(obj: TSetting);
+begin
+  {$IFDEF SIMBA_VERBOSE}
+  writeln('--- SetExtensionPath with value: ' + TPathSetting(obj).Value);
+  {$ENDIF}
+end;
+
 procedure TSimbaForm.SetTrayVisiblity(obj: TSetting);
 begin
   MTrayIcon.Visible := TBooleanSetting(obj).Value;
+end;
+
+procedure TSimbaForm.HandleOpenFileData;
+var
+  Args : TVariantArray;
+  Called: Boolean;
+begin
+  SetLength(Args,2);
+  Args[0] := OpenFileData.FileName^;
+  Args[1] := OpenFileData.Continue^;
+  try
+    ExtManager.HandleHook(EventHooks[SExt_onOpenFile].HookName, Args, Called);
+    OpenFileData.FileName^ := Args[0];
+    OpenFileData.Continue^ := Args[1];
+  except
+    on e : Exception do
+      mDebugLn('ERROR in HandleOpenFileData: ' + e.message);
+  end;
+end;
+
+procedure TSimbaForm.HandleWriteFileData;
+var
+  Args : TVariantArray;
+  Called: Boolean;
+begin
+  SetLength(Args,2);
+  Args[0] := WriteFileData.FileName^;
+  Args[1] := WriteFileData.Continue^;
+  try
+    ExtManager.HandleHook(EventHooks[SExt_onWriteFile].HookName, Args, Called);
+    WriteFileData.FileName^ := Args[0];
+    WriteFileData.Continue^ := Args[1];
+  except
+    on e : Exception do
+      mDebugLn('ERROR in HandleWriteFileData: ' + e.message);
+  end;
+end;
+
+procedure TSimbaForm.HandleScriptStartData;
+var
+  Args : TVariantArray;
+  s: String;
+  Called: Boolean;
+begin
+  SetLength(Args,2);
+  Args[0] := ScriptStartData.Script^;
+  Args[1] := ScriptStartData.Continue^;
+  try
+    s := ExtManager.HandleHook(EventHooks[SExt_onScriptStart].HookName, Args, Called);
+    if Called then
+    begin
+      ScriptStartData.Script^ := s;
+      ScriptStartData.Continue^ := Args[1];
+    end;
+  except
+    on e : Exception do
+      mDebugLn('ERROR in HandleScriptStartData: ' + e.message);
+  end;
+end;
+
+procedure TSimbaForm.HandleScriptOpenData;
+var
+  Args : TVariantArray;
+  s: String;
+  Called: Boolean;
+begin
+  SetLength(Args,1);
+  Args[0] := ScriptOpenData.Script^;
+  try
+    s := ExtManager.HandleHook(EventHooks[SExt_onScriptOpen].HookName, Args, Called);
+    if Called then
+      ScriptOpenData.Script^ := s;
+  except
+    on e : Exception do
+      mDebugLn('ERROR in HandleScriptOpenData: ' + e.message);
+  end;
 end;
 
 procedure TSimbaForm.RecentFileItemsClick(Sender: TObject);

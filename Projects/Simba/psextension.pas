@@ -41,7 +41,7 @@ type
 
   TSimbaPSExtension = class(TVirtualSimbaExtension)
   private
-    PSInstance: TPSScript;
+    FCompiler: TLapeCompiler;
     FWorking: Boolean;
     Script: TStringList;
     FClient : TClient;
@@ -121,7 +121,7 @@ function TSimbaPSExtension.HookExists(const HookName: String): Boolean;
 begin
   Result := False;
   if FWorking then
-    if PSInstance.Exec.GetProc(HookName) <> InvalidVal then
+    if FCompiler.getGlobalVar(Method) <> nil then
       result := True;
 end;
 
@@ -131,7 +131,8 @@ begin
   if not FWorking then
     exit;
   try
-    outvariant := PSInstance.ExecuteFunction(Args, HookName);
+	outvariant := RunCode(FCompiler.Emitter.Code, FCompiler.Emitter.CodeLen, nil, TCodePos(FCompiler.getGlobalVar(HookName).Ptr^));
+    //PSInstance.ExecuteFunction(Args, HookName);
     result := SExt_ok;
   except
     on e : exception do
@@ -152,7 +153,7 @@ begin
     raise Exception.CreateFmt('File %s could not be read', [FileName]);
   end;
   FEnabled := false;
-  PSInstance := nil;
+  FCompiler := nil;
   if not StartDisabled then
     StartExtension;
 end;
@@ -163,7 +164,7 @@ begin
     exit(false);
   result := true;
   try
-    PSInstance.ExecuteFunction([], 'init');
+	RunCode(FCompiler.Emitter.Code, FCompiler.Emitter.CodeLen, nil, TCodePos(FCompiler.getGlobalVar('init').Ptr^));
   except
     result := false;
   end;
@@ -247,7 +248,7 @@ begin
   begin
     if bool then
     begin;
-      if not assigned(PSInstance) then //We enable it for the first time, calls SetEnabled.
+      if not assigned(FCompiler) then //We enable it for the first time, calls SetEnabled.
         StartExtension
       else
       begin
