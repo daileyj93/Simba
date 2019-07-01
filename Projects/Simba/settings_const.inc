@@ -3,13 +3,13 @@ ssLastConfig = 'LastConfig/';
 ssScriptManager = 'ScriptManager/';
 
 ssUpdater = 'Updater/';
+ssExtensions = 'Extensions/';
 ssFonts = 'Fonts/';
 ssIncludes = 'Includes/';
 ssInterpreter = 'Interpreter/';
 ssTabs = 'Tabs/';
 ssColourPicker = 'ColourPicker/';
 ssScripts = 'Scripts/';
-ssExtensions = 'Extensions/';
 ssMainForm = 'MainForm/';
 ssSourceEditor = 'SourceEditor/';
 ssTray = 'Tray/';
@@ -26,6 +26,11 @@ ssCheckUpdateMinutes = ssSettings + ssUpdater + 'CheckEveryXMinutes';
 ssUpdaterLink = ssSettings + ssUpdater + 'RemoteLink';
 ssUpdaterVersionLink = ssSettings + ssUpdater + 'RemoteVersionLink';
 ssAutomaticallyUpdate = ssSettings + ssUpdater + 'AutomaticallyUpdate';
+
+ssExtensionsExtensionN = ssExtensions + 'Extension';
+ssExtensionsPath = ssSettings + ssExtensions + 'Path';
+ssExtensionsCount = ssExtensions + 'ExtensionCount';
+ssExtensionsFileExtension = ssSettings + ssExtensions + 'FileExtension';
 
 ssFontsPath = ssSettings + ssFonts + 'Path';
 ssIncludesPath = ssSettings + ssIncludes + 'Path';

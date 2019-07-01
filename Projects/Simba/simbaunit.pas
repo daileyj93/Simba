@@ -290,8 +290,7 @@ type
     procedure ActionCodeCommentExecute(Sender: TObject);
     procedure ActionColorsExecute(Sender: TObject);
     procedure ActionClearDebugExecute(Sender: TObject);
-	procedure ActionExtensionsExecute(Sender: TObject);
-	procedure ActionExtensionsUpdate(Sender: TObject);
+    procedure ActionExtensionsExecute(Sender: TObject);
     procedure ActionCloseTabExecute(Sender: TObject);
     procedure ActionCompileScriptExecute(Sender: TObject);
     procedure ActionConsoleExecute(Sender: TObject);
@@ -431,6 +430,12 @@ type
 
     function SilentUpdateBeat: Boolean;
 
+    procedure HandleConnectionData;
+    procedure HandleOpenFileData;
+    procedure HandleWriteFileData;
+    procedure HandleScriptStartData;
+    procedure HandleScriptOpenData;
+
     function GetScriptState: TScriptState;
     function GetShowParamHintAuto: boolean;
     function GetShowCodeCompletionAuto: Boolean;
@@ -450,8 +455,7 @@ type
     procedure FillFunctionList(Sender: TObject);
     procedure CustomExceptionHandler(Sender: TObject; E: Exception);
     procedure RegisterSettingsOnChanges;
-	
-	procedure SetExtensionsPath(obj: TSetting);
+
   public
     { Required to work around using freed resources on quit }
     Exiting: Boolean;
@@ -512,7 +516,7 @@ type
     function DefaultScript : string;
     procedure DefaultHighlighter;
     procedure UpdateSimbaSilent(Force: Boolean);
-	procedure LoadExtensions;
+    procedure LoadExtensions;
   end;
 
   procedure formWriteln(constref S: String);
@@ -549,9 +553,9 @@ uses
    script_imports, script_plugins,
    simba.environment, simba.httpclient,
    aca, dtm_editor, scriptcommenter, colorscheme
-   {$IFDEF USE_FORMDESIGNER}, frmdesigner{$ENDIF}
+   {$IFDEF USE_FORMDESIGNER}, frmdesigner{$ENDIF},
    
-   extensionmanagergui,
+   extensionmanagergui
 
    {$IFDEF LINUX_HOTKEYS}, keybinder{$ENDIF};
 
@@ -749,7 +753,7 @@ end;
 
 function TSimbaForm.OnCCFindInclude(Sender: TObject; var FileName: string): Boolean;
 begin
-  Result := FindFile(Filename, [Application.Location, SimbaEnvironment.IncludePath, SimbaSettings.Extensions.Path.Value]);
+  Result := FindFile(Filename, [Application.Location, SimbaEnvironment.IncludePath, SimbaEnvironment.ExtensionPath]);
 end;
 
 function TSimbaForm.OnCCLoadLibrary(Sender: TObject; var Argument: string; out Parser: TCodeInsight): Boolean;
@@ -820,13 +824,6 @@ begin
 
   for I := 0 to Tabs.Count - 1 do
     TMufasaTab(Tabs[I]).ScriptFrame.SynEdit.Font.Assign(TFontSetting(obj).Value);
-end;
-
-procedure TSimbaForm.SetExtensionsPath(obj: TSetting);
-begin
-  {$IFDEF SIMBA_VERBOSE}
-  writeln('--- SetExtensionPath with value: ' + TPathSetting(obj).Value);
-  {$ENDIF}
 end;
 
 procedure TSimbaForm.SetTrayVisiblity(obj: TSetting);
@@ -1526,6 +1523,59 @@ begin
   end;
 end;
 
+procedure TSimbaForm.LoadExtensions;
+var
+  extCount : integer;
+  function LoadExtension(Number : integer) : boolean;
+  var
+    Path : string;
+    ExtPath : string;
+    ExtEnabled : boolean;
+  begin;
+    result := false;
+    if (number < 0) or (number >= extCount) then
+      exit;
+    path := ssExtensionsExtensionN + inttostr(number);
+    if SettingExists(Path) = false then
+      exit;
+    ExtPath := LoadSettingDef(Path + '/Path','');
+    if ExtPath = '' then
+      exit;
+    ExtEnabled := StrToBoolDef(LoadSettingDef(Path + '/Enabled','false'),false);
+    if ExtManager.LoadPSExtension(ExtPath,ExtEnabled) = false then
+      exit;
+    Result := true;
+  end;
+  procedure DeleteExtension(number : integer);
+  var
+    i : integer;
+    path : string;
+  begin;
+    path := ssExtensionsExtensionN;
+    SimbaSettings.MMLSettings.DeleteKey(path + inttostr(number));
+    for i := number + 1 to extCount - 1 do
+      SimbaSettings.MMLSettings.RenameKey(path + inttostr(i),'Extension' + inttostr(i-1));
+    SetSetting(ssExtensionsCount, inttostr(extCount - 1),true);
+    dec(extCount);
+  end;
+
+var
+  str,str2 : string;
+  i : integer;
+begin
+  extCount := StrToIntDef(LoadSettingDef(ssExtensionsCount, '0'),0);
+  for i := 0 to extCount - 1 do
+    while (i < extCount) and not LoadExtension(i) do
+      DeleteExtension(i);
+  SetSetting(ssExtensionsCount, inttostr(extCount));
+
+  str := SimbaEnvironment.ExtensionPath;
+
+  str2 := 'sex';
+
+  ExtManager.LoadPSExtensionsDir(str,str2);
+end;
+
 procedure TSimbaForm.AddRecentFile(const filename: string);
 var
   MaxRecentFiles : integer;
@@ -1830,6 +1880,14 @@ end;
 procedure TSimbaForm.ActionExitExecute(Sender: TObject);
 begin
   Self.Close;
+end;
+
+procedure TSimbaForm.ActionExtensionsExecute(Sender: TObject);
+begin
+  if not ExtensionsForm.Showing then
+    ExtensionsForm.Show
+  else
+    ExtensionsForm.Hide;
 end;
 
 procedure TSimbaForm.ActionFindNextExecute(Sender: TObject);

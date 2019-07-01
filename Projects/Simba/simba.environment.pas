@@ -56,6 +56,7 @@ type
   TSimbaEnvironment = class
   protected
     FDataPath: String;
+    FExtensionPath: String;
     FFontPath: String;
     FIncludePath: String;
     FLibPath: String;
@@ -65,6 +66,7 @@ type
     FPackagePath: String;
 
     procedure SetDataPath(Value: String);
+    procedure setExtensionPath(Value: String);
     procedure SetFontPath(Value: String);
     procedure SetIncludePath(Value: String);
     procedure SetLibPath(Value: String);
@@ -73,6 +75,7 @@ type
     procedure SetPackagePath(Value: String);
   public
     property DataPath: String read FDataPath write SetDataPath;
+    property ExtensionPath: String read FExtensionPath write SetExtensionPath;
     property LibPath: String read FLibPath write SetLibPath;
     property PluginPath: String read FPluginPath write SetPluginPath;
     property FontPath: String read FFontPath write SetFontPath;
@@ -121,6 +124,15 @@ begin
     FDataPath := Application.Location + 'Data' + DirectorySeparator;
 
   ForceDirectories(FDataPath);
+end;
+
+procedure TSimbaEnvironment.SetExtensionPath(Value: String);
+begin
+  FExtensionPath := Value;
+  if FExtensionPath = '' then
+    FExtensionPath := Application.Location + 'Data' + DirectorySeparator;
+
+  ForceDirectories(FExtensionPath);
 end;
 
 procedure TSimbaEnvironment.SetFontPath(Value: String);
@@ -173,6 +185,7 @@ begin
 
   // Load defaults
   DataPath := '';
+  ExtensionPath := '';
   LibPath := '';
   PluginPath := '';
   IncludePath := '';

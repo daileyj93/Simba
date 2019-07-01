@@ -27,9 +27,10 @@ unit psextension;
 interface
 
 uses
-  Classes, SysUtils, virtualextension, forms, client, uPSComponent,uPSCompiler,
-  uPSRuntime, stdCtrls, uPSPreProcessor,MufasaTypes,MufasaBase, web,
-  bitmaps, plugins, libloader, dynlibs,internets,scriptproperties, settingssandbox, updater;
+  Classes, SysUtils, virtualextension, forms, client,
+  lpparser, lpcompiler, lptypes, lpvartypes, lpmessages, lpinterpreter,
+  stdCtrls, MufasaTypes, MufasaBase, web,
+  bitmaps, libloader, dynlibs,internets, settingssandbox, updater;
 
 
 {$I Simba.inc}
@@ -50,10 +51,6 @@ type
     function InitScript: Boolean;
     procedure OutputMessages;
   protected
-    procedure RegisterPSCComponents(Sender: TObject; x: TPSPascalCompiler);
-    procedure RegisterPSRComponents(Sender: TObject; se: TPSExec; x: TPSRuntimeClassImporter);
-    procedure RegisterMyMethods(x: TPSScript);
-    procedure OnPSExecute(Sender: TPSScript);
     function OnNeedFile(Sender: TObject;const OrginFileName: string; var FilePath, Output: string): Boolean;
     procedure SetEnabled(bool : boolean);override;
   public
@@ -66,24 +63,18 @@ type
 
 implementation
 uses
-  colour_conv,dtmutil,
+  colour_conv,dtmutil,LConvEncoding,
   {$ifdef mswindows}windows,  MMSystem,{$endif}//MMSystem -> Sounds
-  uPSC_std, uPSC_controls,uPSC_classes,uPSC_graphics,uPSC_stdctrls,uPSC_forms, uPSC_menus,
-  uPSC_extctrls, uPSC_mml, uPSC_dll, //Compile-libs
-  uPSUtils,
   fontloader,
   IOmanager,//TTarget_Exported
   IniFiles,//Silly INI files
   stringutil, //String st00f
   newsimbasettings, // SimbaSettings
+  simba.environment,
 
-  uPSR_std, uPSR_controls,uPSR_classes,uPSR_graphics,uPSR_stdctrls,uPSR_forms, uPSR_mml,
-  uPSR_menus, uPSR_dll,
-  uPSI_ComCtrls, uPSI_Dialogs,
   files,
   dialogs,
   dtm, //Dtms!
-  uPSR_extctrls, //Runtime-libs
   Graphics, //For Graphics types
   math, //Maths!
   mmath, //Real maths!
@@ -91,7 +82,6 @@ uses
   strutils,
   fileutil,
   tpa, //Tpa stuff
-  SynRegExpr,
   lclintf,
   httpsend,
   fpjson, jsonparser,
@@ -107,21 +97,21 @@ uses
 
   {$IFDEF USE_SQLITE}, msqlite3{$ENDIF}
 
-  , SimbaUnit, updateform, mmisc, mmlpsthread;  // for GetTickCount and others.//Writeln
+  , SimbaUnit, updateform, mmisc;  // for GetTickCount and others.//Writeln
 
 {$MACRO ON}
 {$define extdecl := register}
 
 procedure psWriteLn(s: string);
 begin
-  formWritelnEx(s);
+  formWriteln(s);
 end;
 
 function TSimbaPSExtension.HookExists(const HookName: String): Boolean;
 begin
   Result := False;
   if FWorking then
-    if FCompiler.getGlobalVar(Method) <> nil then
+    if FCompiler.getGlobalVar(HookName) <> nil then
       result := True;
 end;
 
@@ -131,9 +121,8 @@ begin
   if not FWorking then
     exit;
   try
-	outvariant := RunCode(FCompiler.Emitter.Code, FCompiler.Emitter.CodeLen, nil, TCodePos(FCompiler.getGlobalVar(HookName).Ptr^));
-    //PSInstance.ExecuteFunction(Args, HookName);
-    result := SExt_ok;
+     RunCode(FCompiler.Emitter.Code, FCompiler.Emitter.CodeLen, nil, TCodePos(FCompiler.getGlobalVar(HookName).Ptr^));
+     result := SExt_ok;
   except
     on e : exception do
       psWriteLn(format('Error in Simba extension (%s): %s',[Self.GetName,e.message]));
@@ -180,65 +169,6 @@ begin
   result := ExecuteHook('Free',Args,bla) = SExt_ok;
 end;
 
-{$DEFINE MML_EXPORT_THREADSAFE}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/other.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/settings.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/bitmap.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/window.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/tpa.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/strings.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/crypto.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/colour.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/colourconv.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/math.inc}
-{$IFDEF USE_SQLITE}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/ps_sqlite3.inc}
-{$ENDIF}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/mouse.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/file.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/keyboard.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/dtm.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/ocr.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/internets.inc}
-{$I ../../Units/MMLAddon/PSInc/Wrappers/extensions.inc}
-{$I ../../Units/MMLAddon/PSInc/psmethods.inc}
-
-procedure TSimbaPSExtension.RegisterMyMethods(x: TPSScript);
-  procedure SetCurrSection(s: string);
-  begin
-  end;
-begin
-  with SimbaForm, x do
-  begin
-    {$i ../../Units/MMLAddon/PSInc/psexportedmethods.inc}
-    AddFunction(@ext_SDTMToMDTM,'function SDTMToMDTM(Const DTM: TSDTM): TMDTM;');
-    AddFunction(@ext_GetPage,'function GetPage(const url : string) : string');
-    AddFunction(@ext_DecompressBZip2,'function DecompressBZip2(const input: string;out output : string; const BlockSize: Cardinal): boolean;');
-    AddFunction(@ext_UnTar,'function UnTar(const Input : string; out Content : TStringArray) : boolean;');
-    AddFunction(@ext_UnTarEx,'function UnTarEx(const Input : string;const outputdir : string; overwrite : boolean): boolean;');
-    AddFunction(@ext_MessageDlg,'function MessageDlg(const aCaption, aMsg: string; DlgType: TMsgDlgType;Buttons: TMsgDlgButtons; HelpCtx: Longint): Integer;');
-    AddFunction(@ext_InputQuery,'function InputQuery(const ACaption, APrompt : String; var Value : String) : Boolean;');
-    AddFunction(@ext_ScriptText,'function ScriptText: string;');
-    AddFunction(@ext_GetSelectedText, 'function GetSelectedText: string;');
-    AddFunction(@ext_OpenScript,'procedure OpenScript(Name, Data: string; Run: boolean);');
-    AddFunction(@ext_OpenScriptEx,'procedure OpenScriptEx(FileName: string; Run: boolean);');
-    AddRegisteredPTRVariable('Settings','TMMLSettingsSandbox');
-    AddFunction(@ext_GetPageEx,'function GetPageEx(const URL, PostData, MimeType: string): string;');
-    AddFunction(@ext_GetJSONValue,'function GetJSONValue(const Data, Value: string): string;');
-    AddRegisteredVariable('Simba','TForm');
-    AddRegisteredVariable('Simba_MainMenu','TMainMenu');
-    AddRegisteredVariable('Client','TClient');
-  end;
-end;
-
-procedure TSimbaPSExtension.OnPSExecute(Sender: TPSScript);
-begin
-  Sender.SetVarToInstance('Simba',SimbaForm);
-  Sender.SetVarToInstance('Simba_MainMenu',SimbaForm.MainMenu);
-  Sender.SetVarToInstance('Client',FClient);
-  Sender.SetPointerToData('Settings',@Self.Settings,Sender.FindNamedType('TMMLSettingsSandbox'));
-end;
-
 procedure TSimbaPSExtension.SetEnabled(bool: boolean);
 var
   temp : variant;
@@ -270,92 +200,12 @@ begin
   self.CopyClientToBitmap(SimbaForm.Manager,resize,x,y,xs,ys,xe,ye);
 end;
 
-procedure TSimbaPSExtension.RegisterPSCComponents(Sender: TObject; x: TPSPascalCompiler);
-var
-  ScriptPath, ScriptFile: string;
-  i: Integer;
-begin
-  SIRegister_Std(x);
-  SIRegister_Controls(x);
-  SIRegister_Classes(x, true);
-  SIRegister_Graphics(x, true);
-  SIRegister_stdctrls(x);
-  SIRegister_Forms(x);
-  SIRegister_ExtCtrls(x);
-  SIRegister_Menus(x);
-  SIRegister_ComCtrls(x);
-  SIRegister_Dialogs(x);
-
-  ScriptPath := IncludeTrailingPathDelimiter(ExpandFileName(ExtractFileDir(Filename)));
-  ScriptFile := ExtractFileName(Filename);
-  with SimbaForm,x do
-  begin
-    {$I ../../Units/MMLAddon/PSInc/pscompile.inc}
-    AddTypes('TStringArray','Array of String');
-    AddConstantN('ExtPath', 'string').SetString({$IFDEF USE_EXTENSIONS}SimbaSettings.Extensions.Path.Value{$ELSE}''{$ENDIF});
-    for i := 0 to high(VirtualKeys) do
-      AddConstantN(Format('VK_%S',[VirtualKeys[i].Str]),'Byte').SetInt(VirtualKeys[i].Key);
-  end;
-  SIRegister_MML(x);
-  RegisterDll_Compiletime(x);
-
-  with x.AddFunction('procedure writeln;').decl do
-    with AddParam do
-    begin
-      OrgName:= 'x';
-      Mode:= pmIn;
-    end;
-  with x.AddFunction('function ToStr:string').decl do
-    with addparam do
-    begin
-      OrgName:= 'x';
-      Mode:= pmIn;
-    end;
-  with x.AddFunction('procedure swap;').decl do
-  begin
-    with addparam do
-    begin
-      OrgName:= 'x';
-      Mode:= pmInOut;
-    end;
-    with addparam do
-    begin
-      OrgName:= 'y';
-      Mode:= pmInOut;
-    end;
-  end;
-end;
-
-procedure TSimbaPSExtension.RegisterPSRComponents(Sender: TObject; se: TPSExec; x: TPSRuntimeClassImporter);
-begin
-  RIRegister_Std(x);
-  RIRegister_Classes(x, True);
-  RIRegister_Controls(x);
-  RIRegister_Graphics(x, True);
-  RIRegister_stdctrls(x);
-  RIRegister_Forms(x);
-  RIRegister_ExtCtrls(x);
-  RIRegister_Menus(x);
-  RIRegister_ComCtrls(x);
-  RIRegister_Dialogs(x);
-  RegisterDLLRuntime(se);
-  RIRegister_MML(x);
-{  with x.FindClass('TMufasaBitmap') do
-  begin
-    RegisterMethod(@TMufasaBitmapCopyClientToBitmap,'CopyClientToBitmap');
-  end;}
-
-  se.RegisterFunctionName('WRITELN',@Writeln_,nil,nil);
-  se.RegisterFunctionName('TOSTR',@ToStr_,nil,nil);
-  se.RegisterFunctionName('SWAP',@swap_,nil,nil);
-end;
-
 destructor TSimbaPSExtension.Destroy;
 begin
   FClient.free;
   FreeScript;
-  if Assigned(PSInstance) then
-    FreeAndNil(PSInstance);
+  if Assigned(FCompiler) then
+    FreeAndNil(FCompiler);
   Script.Free;
   inherited;
 end;
@@ -367,8 +217,8 @@ var
 begin
   Path := FilePath;
   with SimbaForm do
-    Result := FindFile(Path, [SimbaSettings.Includes.Path.Value,
-                              SimbaSettings.Extensions.Path.Value,
+    Result := FindFile(Path, [SimbaEnvironment.IncludePath,
+                              SimbaEnvironment.ExtensionPath,
                               ExtractFileDir(Filename),
                               ExtractFileDir(OrginFileName)]);
 
@@ -394,32 +244,62 @@ begin
   end;
 end;
 
-procedure TSimbaPSExtension.StartExtension;
+function TSimbaPSExtension.Import: Boolean;
+var
+  i: Int32;
 begin
-  if assigned(PSInstance) then
-    exit;//Already started..
+  Result := False;
 
-  PSInstance := TPSScript.Create(nil);
-  PSInstance.CompilerOptions := PSInstance.CompilerOptions + [icAllowNoBegin, icAllowNoEnd];
+  FCompiler.StartImporting();
 
-  with PSInstance do
-  begin
-    {$I ../../Units/MMLAddon/PSInc/psdefines.inc}
-    Defines.Add('PS_EXTENSION');
-    Defines.Add('EXTENSION');
+  try
+    for i := 0 to ScriptImports.Count - 1 do
+      ScriptImports.Import(ScriptImports.Keys[i], FCompiler, Self);
+
+    Result := True;
+  except
+    on e: Exception do
+      HandleException(e);
   end;
 
-  PSInstance.Script := Self.Script;
-  PSInstance.OnCompImport:=@RegisterPSCComponents;
-  PSInstance.OnExecImport:=@RegisterPSRComponents;
-  PSInstance.OnCompile:=@RegisterMyMethods;
-  PSInstance.OnExecute:=@OnPSExecute;
-  PSInstance.OnNeedFile:=@OnNeedFile;
-  PSInstance.UsePreProcessor:= True;
+  FCompiler.EndImporting();
+end;
+
+function TSimbaPSExtension.Compile: Boolean;
+var
+  T: UInt64;
+begin
+  Result := False;
+
+  try
+    T := GetTickCount64();
+
+    if FCompiler.Compile() then
+    begin
+      Self.Write('Compiled successfully in ' + IntToStr(GetTickCount64() - T) + ' ms.');
+      Self.WriteLn();
+
+      Result := True;
+    end;
+  except
+    on e: Exception do
+      HandleException(e);
+  end;
+end;
+
+procedure TSimbaPSExtension.StartExtension;
+begin
+  if assigned(FCompiler) then
+    exit;//Already started..
+
+  FCompiler := TLapeCompiler.Create(TLapeTokenizerString.Create(Self.Script, FilePath));
+  FCompiler.OnFindFile := @OnFindFile;
+
+  TSimbaPSExtension.Import;
 
   formWritelnEx(Format('Loading extension %s', [FileName]));
   try
-    FWorking := PSInstance.Compile;
+    FWorking := Compile;
   except
     on e : exception do
       FormWritelnEx(format('Error in Simba extension compilation (%s) : %s',[FileName,e.message]));

@@ -129,7 +129,7 @@ begin
     Result := True;
   except
     on e : exception do
-      formWritelnex(format('Error in LoadPSExtension(%s): %s',[FileName, e.message]));
+      formWriteln(format('Error in LoadPSExtension(%s): %s',[FileName, e.message]));
   end;
 end;
 
