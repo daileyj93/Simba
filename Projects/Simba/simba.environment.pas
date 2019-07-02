@@ -130,7 +130,7 @@ procedure TSimbaEnvironment.SetExtensionPath(Value: String);
 begin
   FExtensionPath := Value;
   if FExtensionPath = '' then
-    FExtensionPath := Application.Location + 'Data' + DirectorySeparator;
+    FExtensionPath := Application.Location + 'Extensions' + DirectorySeparator;
 
   ForceDirectories(FExtensionPath);
 end;

@@ -836,6 +836,7 @@ var
   Args : TVariantArray;
   Called: Boolean;
 begin
+  mDebugLn('OPENFILE');
   SetLength(Args,2);
   Args[0] := OpenFileData.FileName^;
   Args[1] := OpenFileData.Continue^;
@@ -990,9 +991,11 @@ end;
 procedure TSimbaForm.ThreadOpenFileEvent(Sender: TObject; var Filename: string;
   var Continue: boolean);
 begin
+  mDebugLn('open file event');
   OpenFileData.Sender := Sender;
   OpenFileData.FileName:= @FileName;
   OpenFileData.Continue:= @Continue;
+  TThread.Synchronize(nil,@HandleOpenFileData);
 end;
 
 procedure TSimbaForm.ThreadWriteFileEvent(Sender: TObject; var Filename: string;
@@ -2029,6 +2032,7 @@ end;
 
 procedure TSimbaForm.ActionOpenExecute(Sender: TObject);
 begin
+  mDebugLn('TSimbaForm.ActionOpenExecute');
   Self.OpenScript;
 end;
 
@@ -2555,6 +2559,9 @@ begin
 
     SimbaColors := TSimbaColors.Create(SimbaForm);
     SimbaPackageForm := TSimbaPackageForm.Create(Self, ToolBar);
+    
+    ExtensionsForm := TExtensionsForm.Create(Self);
+    LoadExtensions;
 
     CodeCompletionForm := TAutoCompletePopup.Create(Self);
     CodeCompletionForm.InsertProc := @OnCompleteCode;
@@ -3101,6 +3108,7 @@ procedure TSimbaForm.ScriptOpenEvent(Sender: TObject; var Script: string);
 begin
   ScriptOpenData.Sender:=Sender;
   ScriptOpenData.Script:= @Script;
+  TThread.Synchronize(nil,@HandleScriptOpenData);
 end;
 
 procedure TSimbaForm.TT_ScriptManagerClick(Sender: TObject);
@@ -3169,28 +3177,35 @@ var
   OpenInNewTab : boolean;
 begin
   Result := False;
+  mDebugLn('TSimbaForm.OpenScript1');
   OpenInNewTab := SimbaSettings.Tab.OpenScriptInNewTab.GetDefValue(True);
   if not OpenInNewTab then
     if CanExitOrOpen = false then
       Exit;
+  mDebugLn('TSimbaForm.OpenScript2');
   with TOpenDialog.Create(nil) do
   try
+    mDebugLn('TSimbaForm.OpenScript3');
     if (CurrScript.ScriptFile <> '') then
       InitialDir := ExtractFileDir(CurrScript.ScriptFile)
     else
       InitialDir := SimbaSettings.Scripts.Path.Value;
     Options := [ofAllowMultiSelect, ofExtensionDifferent, ofPathMustExist, ofFileMustExist, ofEnableSizing, ofViewDetail];
     Filter:= 'Simba Files|*.simba;*.simb;*.cogat;*.mufa;*.txt;*.pas;|Any files|*.*';
+    mDebugLn('TSimbaForm.OpenScript4');
     if Execute then
     begin
+      mDebugLn('TSimbaForm.OpenScript5');
       Result := True;
       for i := 0 to Files.Count - 1 do
         if (not FileExistsUTF8(Files[i])) or (not LoadScriptFile(Files[i])) then
         begin
+          mDebugLn('TSimbaForm.OpenScript6');
           Result := False;
           Break;
         end;
     end;
+    mDebugLn('TSimbaForm.OpenScript7');
   finally
     Free;
   end;
@@ -3208,6 +3223,7 @@ var
   script: String;
 
 begin
+  mDebugLn('TSimbaForm.LoadScriptFile');
   if AlwaysOpenInNewTab then
     OpenInNewTab := true
   else

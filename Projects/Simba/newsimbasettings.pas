@@ -146,6 +146,12 @@ type
 
       procedure UpdateSimbaEnvironment(Setting: TSetting);
     end;
+    
+    TExtensionsSection = class(TSection)
+      Path: TEnvironmentSetting;
+      
+      procedure UpdateSimbaEnvironment(Setting: TSetting);
+    end;
 
     TFontsSection = class(TSection)
       Path: TEnvironmentSetting;
@@ -265,6 +271,7 @@ type
     TSimbaSettings = class(TSection)
     public
       Includes: TIncludesSection;
+      Extensions: TExtensionsSection;
       Fonts: TFontsSection;
       Scripts: TScriptsSection;
       CodeInsight: TCodeInsightSection;
@@ -422,6 +429,11 @@ end;
 procedure TIncludesSection.UpdateSimbaEnvironment(Setting: TSetting);
 begin
   SimbaEnvironment.IncludePath := Path.Value
+end;
+
+procedure TExtensionsSection.UpdateSimbaEnvironment(Setting: TSetting);
+begin
+  SimbaEnvironment.ExtensionPath := Path.Value
 end;
 
 { Values }

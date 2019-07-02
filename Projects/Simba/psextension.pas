@@ -52,6 +52,9 @@ type
     procedure OutputMessages;
   protected
     function OnNeedFile(Sender: TObject;const OrginFileName: string; var FilePath, Output: string): Boolean;
+    procedure HandleException(e: Exception);
+    function Import: Boolean;
+    function Compile: Boolean;
     procedure SetEnabled(bool : boolean);override;
   public
     constructor Create(FileStr: String; StartDisabled : boolean = false);
@@ -71,6 +74,7 @@ uses
   stringutil, //String st00f
   newsimbasettings, // SimbaSettings
   simba.environment,
+  script_imports,
 
   files,
   dialogs,
@@ -116,13 +120,30 @@ begin
 end;
 
 function TSimbaPSExtension.ExecuteHook(const HookName: String;var Args: TVariantArray; out OutVariant : Variant): Integer;
+var
+  VarStack : TByteArray;
+  arg : Variant;
+  b : Integer;
 begin
+  psWriteLn('EXECUTE HOOK');
   result := SExt_error;
   if not FWorking then
     exit;
   try
-     RunCode(FCompiler.Emitter.Code, FCompiler.Emitter.CodeLen, nil, TCodePos(FCompiler.getGlobalVar(HookName).Ptr^));
-     result := SExt_ok;
+    b := 0;
+    SetLength(VarStack, SizeOf(Args));
+    psWriteLn(hookName);
+    psWriteLn(IntToStr(SizeOf(Args)));
+    for arg in Args do
+    begin
+      Move(arg, VarStack[b], sizeof(arg));
+      psWriteLn(IntToStr(Sizeof(arg)));
+      Inc(b, SizeOf(arg));
+    end;
+    RunCode(FCompiler.Emitter.Code, FCompiler.Emitter.CodeLen, VarStack, TCodePos(FCompiler.getGlobalVar(HookName).Ptr^));
+    OutVariant := VarStack[b];
+    psWriteLn(outVariant);
+    result := SExt_ok;
   except
     on e : exception do
       psWriteLn(format('Error in Simba extension (%s): %s',[Self.GetName,e.message]));
@@ -231,7 +252,7 @@ begin
   FilePath := Path;
 
   try
-    with TFileStream.Create(UTF8ToSys(FilePath), fmOpenRead) do
+    with TFileStream.Create(FilePath, fmOpenRead) do
     try
       SetLength(Output, Size);
       Read(Output[1], Size);
@@ -242,6 +263,28 @@ begin
     Result := False;
     psWriteln('TSimbaPSExtension.OnNeedFile');
   end;
+end;
+
+procedure TSimbaPSExtension.HandleException(e: Exception);
+begin
+  //if (Error.Callback <> nil) and (Error.Data <> nil) then
+  //begin
+  //  Self.Error.Data^ := Default(TErrorData);
+  //
+  //  if (e is lpException) then
+  //  begin
+  //    with (e as lpException) do
+  //    begin
+  //      Self.Error.Data^.Line := DocPos.Line;
+  //      Self.Error.Data^.Col := DocPos.Col;
+  //      Self.Error.Data^.FilePath := DocPos.FileName;
+  //      Self.Error.Data^.Error := Message;
+  //    end;
+  //  end else
+  //    Self.Error.Data^.Error := 'ERROR: ' + e.ClassName + ' :: ' + e.Message;
+  //
+  //  Synchronize(Error.Callback);
+  //end;
 end;
 
 function TSimbaPSExtension.Import: Boolean;
@@ -276,8 +319,8 @@ begin
 
     if FCompiler.Compile() then
     begin
-      Self.Write('Compiled successfully in ' + IntToStr(GetTickCount64() - T) + ' ms.');
-      Self.WriteLn();
+      FormWriteLn('Compiled successfully in ' + IntToStr(GetTickCount64() - T) + ' ms.');
+      //FormWriteLn();
 
       Result := True;
     end;
@@ -292,22 +335,22 @@ begin
   if assigned(FCompiler) then
     exit;//Already started..
 
-  FCompiler := TLapeCompiler.Create(TLapeTokenizerString.Create(Self.Script, FilePath));
-  FCompiler.OnFindFile := @OnFindFile;
+  FCompiler := TLapeCompiler.Create(TLapeTokenizerString.Create(Self.Script.Text, FileName));
+  //FCompiler.OnFindFile := @OnNeedFile;
 
-  TSimbaPSExtension.Import;
+  Import;
 
-  formWritelnEx(Format('Loading extension %s', [FileName]));
+  formWriteln(Format('Loading extension %s', [FileName]));
   try
     FWorking := Compile;
   except
     on e : exception do
-      FormWritelnEx(format('Error in Simba extension compilation (%s) : %s',[FileName,e.message]));
+      FormWriteln(format('Error in Simba extension compilation (%s) : %s',[FileName,e.message]));
   end;
 
   if FWorking then
   begin
-    formWritelnEx('Extension Enabled');
+    formWriteln('Extension Enabled');
 
     if InitScript then
       mDebugLn('Init procedure successfully called')
@@ -315,7 +358,7 @@ begin
       mDebugLn('Init procedure didn''t execute right, or couldn''t be found');
   end else
   begin
-    formWritelnEx('Extension Disabled - Did not compile');
+    formWriteln('Extension Disabled - Did not compile');
     OutputMessages;
   end;
 
@@ -326,8 +369,8 @@ procedure TSimbaPSExtension.OutputMessages;
 var
   l: Longint;
 begin
-  for l := 0 to PSInstance.CompilerMessageCount - 1 do
-    formWritelnEx(PSInstance.CompilerErrorToStr(l) + ' at line ' + inttostr(PSInstance.CompilerMessages[l].Row));
+  //for l := 0 to PSInstance.CompilerMessageCount - 1 do
+  //  formWritelnEx(PSInstance.CompilerErrorToStr(l) + ' at line ' + inttostr(PSInstance.CompilerMessages[l].Row));
 end;
 
 
