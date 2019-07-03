@@ -131,17 +131,21 @@ begin
     exit;
   try
     b := 0;
-    SetLength(VarStack, SizeOf(Args));
+    SetLength(VarStack, 1000);
     psWriteLn(hookName);
-    psWriteLn(IntToStr(SizeOf(Args)));
+    psWriteLn('ARGS size: ' + IntToStr(SizeOf(Args)));
+    psWriteLn('arg[0] size: ' + IntToStr(SizeOf(Args[0])));
+    psWriteLn('ARGS length: ' + IntToStr(Length(Args)));
     for arg in Args do
     begin
-      Move(arg, VarStack[b], sizeof(arg));
-      psWriteLn(IntToStr(Sizeof(arg)));
+      //Move(arg, VarStack[b], sizeof(arg));
+      psWriteLn('arg size: ' + IntToStr(Sizeof(arg)));
       Inc(b, SizeOf(arg));
     end;
+    psWriteLn('running code: ');
+    PPointer(@VarStack[b])^ := @OutVariant;
     RunCode(FCompiler.Emitter.Code, FCompiler.Emitter.CodeLen, VarStack, TCodePos(FCompiler.getGlobalVar(HookName).Ptr^));
-    OutVariant := VarStack[b];
+    //OutVariant := VarStack[b];
     psWriteLn(outVariant);
     result := SExt_ok;
   except
